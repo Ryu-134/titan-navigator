@@ -13,6 +13,14 @@ Run the program:
 3. Run:
    python final_project.py
 
+Dependencies:
+-------------
+- Python 3.10+ 
+- Tkinter 
+- PyPDF2        =>  pip install PyPDF2
+- Python-Docx   => pip install python-docx
+
+
 
 Tabs Included:
 --------------
