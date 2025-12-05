@@ -1,11 +1,10 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import platform
-
+import os
 from collections import deque
 import heapq
 import time
-
 import PyPDF2
 import docx
 
@@ -266,7 +265,7 @@ def load_text_from_file(filepath):
     raise RuntimeError("Unsupported file type")
 
 
-# helper: create Text with colors derived from current ttk theme
+# helper to create text with colors derived from current ttk theme
 def themed_text(parent):
     style = ttk.Style()
     bg = style.lookup("TFrame", "background") or "#ffffff"
@@ -285,7 +284,7 @@ class gui(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Titan Campus Algorithmic Assistant (TCAA)")
-        self.geometry("900x600")
+        self.geometry("1400x1000")
 
         self.style = ttk.Style(self)
 
@@ -295,11 +294,11 @@ class gui(tk.Tk):
         else:
             self.style.theme_use("clam")
 
-        # fonts (optional)
+        # fonts 
         if platform.system() == "Windows":
-            base_font = ("Segoe UI", 10)
+            base_font = ("Segoe UI", 12)
         else:
-            base_font = ("SF Pro Text", 11)
+            base_font = ("SF Pro Text", 12)
 
         self.option_add("*TButton.Font", base_font)
         self.option_add("*TLabel.Font", base_font)
@@ -310,7 +309,7 @@ class gui(tk.Tk):
         notebook = ttk.Notebook(self)
         notebook.pack(fill="both", expand=True, padx=8, pady=8)
 
-        self.campus_graph = self.create_sample_campus_graph()
+        self.campus_graph = self.campus_graph()
 
         self.navigator_tab = CampusNavigatorTab(notebook, self.campus_graph)
         self.study_tab = StudyPlannerTab(notebook)
@@ -323,17 +322,26 @@ class gui(tk.Tk):
         notebook.add(self.info_tab, text="Algorithm Info")
 
     @staticmethod
-    def create_sample_campus_graph():
+    def campus_graph():
         graph = {
-            "Library": [("CS", 5), ("Gym", 7)],
-            "CS": [("Library", 5), ("Cafeteria", 3)],
-            "Gym": [("Library", 7), ("Cafeteria", 4)],
-            "Cafeteria": [("CS", 3), ("Gym", 4)],
+            "CS": [("E", 1), ("EC", 4)],
+            "E": [("CS", 1), ("EC", 3), ("KHS", 6)],
+            "KHS": [("E", 6), ("CPAC", 8), ("VA", 9)],
+            "EC": [("CS", 4), ("E", 3), ("H", 3)],
+            "H": [("EC", 3), ("MH", 4)],
+            "VA": [("CPAC", 2), ("KHS", 9)],
+            "CPAC": [("VA", 2), ("MH", 2), ("KHS", 8)],
+            "MH": [("DBH", 1), ("CPAC", 2), ("H", 5)],
+            "DBH": [("MH", 1), ("LH", 2)],
+            "LH": [("DBH", 1), ("SGMH", 2)],
+            "SGMH": [("LH", 2), ("CP", 5)],
+            "CP": [("SGMH", 5)],
         }
         return graph
 
 
 class CampusNavigatorTab(ttk.Frame):
+
     def __init__(self, parent, graph):
         super().__init__(parent)
 
@@ -365,6 +373,12 @@ class CampusNavigatorTab(ttk.Frame):
         )
         self.end_menu.pack(side="left", padx=6)
 
+        ttk.Button(
+            top_frame,
+            text="Show Graph (Adj List)",
+            command=self.show_graph_adj_list
+        ).pack(side="left", padx=10)
+
         btn_frame = ttk.Frame(self)
         btn_frame.pack(side="top", fill="x", padx=16, pady=(0, 8))
 
@@ -380,98 +394,247 @@ class CampusNavigatorTab(ttk.Frame):
         self.output = themed_text(self)
         self.output.pack(fill="both", expand=True, padx=16, pady=12)
 
+
     def clear_output(self):
         self.output.delete("1.0", tk.END)
 
     def println(self, text):
         self.output.insert(tk.END, str(text) + "\n")
+        
+        
+    def show_graph_adj_list(self):
+        popup = tk.Toplevel(self)
+        popup.title("Campus Graph (Adjacency List)")
+        popup.geometry("400x300")  
+        text_widget = tk.Text(popup, wrap="word")
+        scrollbar = ttk.Scrollbar(popup, orient="vertical", command=text_widget.yview)
+        text_widget.configure(yscrollcommand=scrollbar.set)
+
+        text_widget.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        # build adjacency list text
+        lines = []
+        for u in sorted(self.graph.keys()):
+            neighbors = ", ".join(f"{v} ({w}) " for v, w in self.graph[u])
+            lines.append(f"{u}:  {neighbors}")
+        text_widget.insert("1.0", "\n".join(lines))
+
+        text_widget.config(state="disabled")  
+
+
+        
 
     def run_bfs(self):
         self.clear_output()
         start = self.start_var.get()
         end = self.end_var.get()
+
         path = bfs(self.graph, start, end)
+
+        self.println("Breadth-First Search (BFS):")
+        self.println("")
+
         if path is None:
-            self.println("No path found")
+            self.println(f"No path found from {start} to {end}.")
         else:
-            self.println(f"BFS fewest hops path from {start} to {end}:")
-            self.println(" -> ".join(path))
+            self.println(f"BFS fewest-hops path from {start} to {end}:")
+            self.println(" --> ".join(path))
             self.println(f"Number of hops: {len(path) - 1}")
+
+        _, is_connected = dfs(self.graph, start)  # use DFS to check global connectivity from same start
+        if is_connected:
+            self.println("\nThe graph is CONNECTED.")
+        else:
+            self.println("\nThe graph is NOT CONNECTED.")
+        
+        self.println("\nNote: BFS ignores edge weights and minimizes hops only.")
 
     def run_dfs(self):
         self.clear_output()
         start = self.start_var.get()
         order, is_connected = dfs(self.graph, start)
+
+        self.println("Depth-First Search (DFS):")
+        self.println("")
         self.println(f"DFS order starting from {start}:")
-        self.println(" -> ".join(order))
-        self.println(f"Graph connected (from {start})? {is_connected}")
+        if order:
+            self.println(" --> ".join(order))
+            self.println(f"Number of nodes visited: {len(order)} / {len(self.graph)}")
+        else:
+            self.println("No nodes visited (start node not in graph).")
+        self.println("")
+
+        if is_connected:
+            self.println("The graph is CONNECTED.")
+        else:
+            self.println("The graph is NOT CONNECTED.")
+        
+        self.println("\nNote:")
+        self.println(" - DFS ignores the selected End node.")
+        self.println(" - It performs a full traversal from the Start node to test reachability and connectivity.")
+
 
     def run_dijkstra(self):
         self.clear_output()
         start = self.start_var.get()
         end = self.end_var.get()
+
+        t0 = time.perf_counter()
         dist, path = dijkstra(self.graph, start, end)
+        elapsed_ms = (time.perf_counter() - t0) * 1000
+
+        self.println("Dijkstra's Algorithm (Shortest Path):")
+        self.println("")
+
         if path is None:
-            self.println("No path found")
+            self.println(f"No path found from {start} to {end}.")
+            self.println(f"Computation time: {elapsed_ms:.4f} ms")
+            return
+
+        detailed = [] # shows detailed weighted path: u --w--> v
+        for i in range(len(path) - 1):
+            u = path[i]
+            v = path[i + 1]
+            w = None
+            for nbr, w_candidate in self.graph[u]:
+                if nbr == v:
+                    w = w_candidate
+                    break
+            if w is not None:
+                detailed.append(f"    {u}   --{w}-->   {v}\n")
+            else:
+                # fallback in weird edge cases
+                detailed.append(f"{u} --> {v}")
+
+        self.println(f"Shortest path from {start} to {end}:")
+        if detailed:
+            self.println("  " + "  ".join(detailed))
         else:
-            self.println(f"Dijkstra shortest path from {start} to {end}:")
-            self.println(" -> ".join(path))
-            self.println(f"Total distance: {dist}")
+            self.println(f"  {start}") # single-node path case start == end
+        self.println(f"Total distance: {dist}")
+        self.println(f"Number of edges: {len(path) - 1}")
+        self.println(f"Computation time: {elapsed_ms:.4f} ms\n")
+
+        _, is_connected = dfs(self.graph, start)
+        if is_connected:
+            self.println("The graph is CONNECTED.")
+        else:
+            self.println("The graph is NOT CONNECTED.")
+        
+        self.println("\nNote: Dijkstra assumes non-negative edge weights.")
+
 
     def run_prim(self):
         self.clear_output()
         start = self.start_var.get()
         edges, total = prim_mst(self.graph, start)
-        self.println(f"Prim MST starting from {start}:")
+
+        self.println("Minimum Spanning Tree (Prim's Algorithm):")
+        self.println("")
+
+        if not edges:
+            self.println("No MST edges (graph may be empty or disconnected).")
+            return
+
         for u, v, w in edges:
-            self.println(f"{u} -- {v} (w={w})")
-        self.println(f"Total MST weight: {total}")
+            self.println(f"{u} -- {v} (weight = {w})")
+
+        self.println("")
+        self.println(f"Total MST cost: {total}")
+
+        self.println(f"Number of edges in MST: {len(edges)}")
+        if len(edges) == max(0, len(self.graph) - 1):        # if MST has |V|-1 edges, the underlying undirected graph is connected
+            self.println("The MST spans all vertices (graph is CONNECTED).")
+        else:
+            self.println("The MST does NOT span all vertices (graph is NOT fully connected).")
+        self.println("")
+        self.println("Note: Prim's MST ignores the selected End node.")
+        self.println("The MST spans all buildings using minimum total distance.")
+            
+
 
 
 class StudyPlannerTab(ttk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
 
-        self.tasks = []
+        self.tasks = []  
+        input_frame = ttk.Frame(self)
+        input_frame.pack(side="top", fill="x", padx=16, pady=8)
 
-        top_frame = ttk.Frame(self)
-        top_frame.pack(side="top", fill="x", padx=16, pady=12)
+        ttk.Label(input_frame, text="Task:").pack(side="left", padx=(0, 4))
+        self.name_entry = ttk.Entry(input_frame, width=25)
+        self.name_entry.pack(side="left", padx=(0, 8))
 
-        ttk.Label(top_frame, text="Task name:").grid(row=0, column=0, sticky="w")
-        self.name_entry = ttk.Entry(top_frame, width=24)
-        self.name_entry.grid(row=0, column=1, padx=6, pady=2)
+        ttk.Label(input_frame, text="Time (h):").pack(side="left")
+        self.time_entry = ttk.Entry(input_frame, width=8)
+        self.time_entry.pack(side="left", padx=(0, 8))
 
-        ttk.Label(top_frame, text="Time (int):").grid(row=1, column=0, sticky="w")
-        self.time_entry = ttk.Entry(top_frame, width=12)
-        self.time_entry.grid(row=1, column=1, padx=6, pady=2)
+        ttk.Label(input_frame, text="Value:").pack(side="left")
+        self.value_entry = ttk.Entry(input_frame, width=8)
+        self.value_entry.pack(side="left", padx=(0, 8))
 
-        ttk.Label(top_frame, text="Value (int):").grid(row=2, column=0, sticky="w")
-        self.value_entry = ttk.Entry(top_frame, width=12)
-        self.value_entry.grid(row=2, column=1, padx=6, pady=2)
+        ttk.Button(input_frame, text="Add", command=self.add_task).pack(side="left", padx=(4, 4))
+        ttk.Button(input_frame, text="Remove Selected", command=self.remove_selected).pack(side="left", padx=(4, 0))
 
-        ttk.Button(top_frame, text="Add Task",
-                   command=self.add_task).grid(row=3, column=0, columnspan=2, pady=8)
+        table_frame = ttk.Frame(self)
+        table_frame.pack(side="top", fill="both", expand=False, padx=16, pady=(0, 8))
 
-        ttk.Label(top_frame, text="Available time (int):").grid(row=4, column=0, sticky="w")
-        self.capacity_entry = ttk.Entry(top_frame, width=12)
-        self.capacity_entry.grid(row=4, column=1, padx=6, pady=2)
+        self.tree = ttk.Treeview(
+            table_frame,
+            columns=("task", "time", "value"),
+            show="headings",
+            height=6
+        )
+        self.tree.heading("task", text="Task")
+        self.tree.heading("time", text="Time (h)")
+        self.tree.heading("value", text="Value")
 
-        btn_frame = ttk.Frame(self)
-        btn_frame.pack(side="top", fill="x", padx=16, pady=(0, 8))
+        self.tree.column("task", width=250, anchor="w")
+        self.tree.column("time", width=80, anchor="center")
+        self.tree.column("value", width=80, anchor="center")
+        self.tree.pack(side="left", fill="both", expand=True)
 
-        ttk.Button(btn_frame, text="Run Greedy",
-                   command=self.run_greedy).pack(side="left", padx=4)
-        ttk.Button(btn_frame, text="Run DP",
-                   command=self.run_dp).pack(side="left", padx=4)
+        scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side="right", fill="y")
+
+        bottom_frame = ttk.Frame(self)
+        bottom_frame.pack(side="top", fill="x", padx=16, pady=(0, 8))
+
+        ttk.Label(bottom_frame, text="Available Time (h):").pack(side="left")
+        self.capacity_entry = ttk.Entry(bottom_frame, width=10)
+        self.capacity_entry.pack(side="left", padx=(4, 12))
+
+        ttk.Button(bottom_frame, text="Run Greedy", command=self.run_greedy).pack(side="left", padx=4)
+        ttk.Button(bottom_frame, text="Run DP (Knapsack)", command=self.run_dp).pack(side="left", padx=4)
+        ttk.Button(bottom_frame, text="Run Both (Compare)", command=self.run_both).pack(side="left", padx=4)
 
         self.output = themed_text(self)
-        self.output.pack(fill="both", expand=True, padx=16, pady=12)
+        self.output.pack(fill="both", expand=True, padx=16, pady=8)
+        self.set_idle_message()
+
+
+    def set_idle_message(self):
+        self.output.config(state="normal")
+        self.output.delete("1.0", tk.END)
+        self.output.insert(
+            tk.END,
+            "Study Planner:\n"
+            "Add tasks, set available time, then run Greedy or DP.\n"
+        )
+        self.output.config(state="disabled")
+
 
     def clear_output(self):
+        self.output.config(state="normal")
         self.output.delete("1.0", tk.END)
+
 
     def println(self, text):
         self.output.insert(tk.END, str(text) + "\n")
+
 
     def add_task(self):
         name = self.name_entry.get().strip()
@@ -484,11 +647,33 @@ class StudyPlannerTab(ttk.Frame):
         if not name:
             messagebox.showerror("Error", "Task name required")
             return
+
         self.tasks.append((name, t, v))
-        self.println(f"Added task: {name}, time={t}, value={v}")
+        self.tree.insert("", tk.END, values=(name, t, v))
+
         self.name_entry.delete(0, tk.END)
         self.time_entry.delete(0, tk.END)
         self.value_entry.delete(0, tk.END)
+
+
+    def remove_selected(self):
+        selected = self.tree.selection()
+        if not selected:
+            return
+
+        for item in selected:
+            vals = self.tree.item(item, "values")
+            name, t_str, v_str = vals
+            try:
+                t = int(t_str)
+                v = int(v_str)
+            except ValueError:
+                t = v = None
+            for idx, (n, tt, vv) in enumerate(self.tasks):
+                if n == name and (t is None or (tt == t and vv == v)):
+                    del self.tasks[idx]
+                    break
+            self.tree.delete(item)
 
     def get_capacity(self):
         try:
@@ -498,68 +683,164 @@ class StudyPlannerTab(ttk.Frame):
             return None
 
     def run_greedy(self):
-        self.clear_output()
         cap = self.get_capacity()
         if cap is None:
             return
+        self.clear_output()
         chosen, total_time, total_value = greedy_schedule(self.tasks, cap)
         self.println("Greedy schedule:")
         for name, t, v in chosen:
-            self.println(f"- {name} (time={t}, value={v})")
-        self.println(f"Total time: {total_time}")
+            self.println(f"  - {name}  (time = {t}, value = {v})")
+        self.println(f"\nTotal time: {total_time}")
         self.println(f"Total value: {total_value}")
+        self.output.config(state="disabled")
+
 
     def run_dp(self):
-        self.clear_output()
         cap = self.get_capacity()
         if cap is None:
             return
+        self.clear_output()
         chosen, total_time, total_value = dp_schedule(self.tasks, cap)
-        self.println("DP optimal schedule:")
+        self.println("DP optimal schedule (0/1 Knapsack):")
         for name, t, v in chosen:
-            self.println(f"- {name} (time={t}, value={v})")
-        self.println(f"Total time: {total_time}")
+            self.println(f"  - {name} (time={t}, value={v})")
+        self.println(f"\nTotal time: {total_time}")
         self.println(f"Total value: {total_value}")
+        self.output.config(state="disabled")
+
+
+    def run_both(self):
+        cap = self.get_capacity()
+        if cap is None:
+            return
+
+        self.clear_output()
+
+        t0 = time.perf_counter()
+        g_chosen, g_time, g_value = greedy_schedule(self.tasks, cap)
+        g_ms = (time.perf_counter() - t0) * 1000
+
+        t0 = time.perf_counter()
+        d_chosen, d_time, d_value = dp_schedule(self.tasks, cap)
+        d_ms = (time.perf_counter() - t0) * 1000
+
+        self.println(f"Study Planner Comparison (capacity = {cap}):")
+        self.println("")
+
+        self.println("Greedy schedule:")
+        for name, t, v in g_chosen:
+            self.println(f"  - {name} (time={t}, value={v})")
+        self.println(f"Greedy total time: {g_time}")
+        self.println(f"Greedy total value: {g_value}")
+        self.println(f"Greedy runtime: {g_ms:.4f} ms")
+        self.println("")
+
+        self.println("DP optimal schedule (0/1 Knapsack):")
+        for name, t, v in d_chosen:
+            self.println(f"  - {name} (time={t}, value={v})")
+        self.println(f"DP total time: {d_time}")
+        self.println(f"DP total value: {d_value}")
+        self.println(f"DP runtime: {d_ms:.4f} ms")
+        self.println("")
+
+        self.println("\nSummary:")
+        if g_value == d_value:
+            self.println("  - Greedy and DP achieved the SAME total value.")
+        elif g_value < d_value:
+            self.println("  - DP found a BETTER schedule (higher total value) than Greedy.")
+        else:
+            self.println("  - Greedy found a schedule with higher value (unusual for 0/1 knapsack).")
+
+        self.println("  - Greedy is a fast heuristic based on value density.")
+        self.println("  - DP is guaranteed optimal but uses more time/space (O(n * C)).")
+
+        self.output.config(state="disabled")
+
 
 
 class NotesSearchTab(ttk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
+
         self.text = ""
+        self.current_doc_name = None
 
         top_frame = ttk.Frame(self)
-        top_frame.pack(side="top", fill="x", padx=16, pady=12)
+        top_frame.pack(side="top", fill="x", padx=16, pady=8)
 
-        ttk.Button(top_frame, text="Load File",
-                   command=self.load_file).grid(row=0, column=0, padx=6)
-        self.file_label = ttk.Label(top_frame, text="No file loaded")
-        self.file_label.grid(row=0, column=1, sticky="w")
+        ttk.Label(top_frame, text="Document:").grid(row=0, column=0, sticky="w")
 
-        ttk.Label(top_frame, text="Pattern:").grid(row=1, column=0, sticky="w")
-        self.pattern_entry = ttk.Entry(top_frame, width=30)
-        self.pattern_entry.grid(row=1, column=1, padx=6)
+        self.doc_var = tk.StringVar(value="No document loaded")
+        self.doc_entry = ttk.Entry(top_frame, textvariable=self.doc_var, state="readonly", width=40)
+        self.doc_entry.grid(row=0, column=1, sticky="we", padx=(4, 8))
 
-        ttk.Label(top_frame, text="Algorithm:").grid(row=2, column=0, sticky="w")
-        self.alg_var = tk.StringVar(value="ALL")
-        self.alg_menu = ttk.Combobox(
-            top_frame,
-            textvariable=self.alg_var,
-            values=["NAIVE", "RABIN-KARP", "KMP", "ALL"],
-            state="readonly"
+        ttk.Button(top_frame, text="Load Document...",
+                   command=self.load_file).grid(row=0, column=2, padx=(0, 12))
+
+        ttk.Label(top_frame, text="Pattern:").grid(row=0, column=3, sticky="w")
+        self.pattern_entry = ttk.Entry(top_frame, width=20)
+        self.pattern_entry.grid(row=0, column=4, padx=(4, 0))
+
+        top_frame.columnconfigure(1, weight=1)
+
+        alg_frame = ttk.Frame(self)
+        alg_frame.pack(side="top", fill="x", padx=16, pady=(0, 8))
+
+        ttk.Label(alg_frame, text="Algorithm:").pack(side="left")
+
+        self.alg_var = tk.StringVar(value="ALL")  
+
+        ttk.Radiobutton(alg_frame, text="Naive",
+                        variable=self.alg_var, value="NAIVE").pack(side="left", padx=4)
+        ttk.Radiobutton(alg_frame, text="Rabin-Karp",
+                        variable=self.alg_var, value="RABIN-KARP").pack(side="left", padx=4)
+        ttk.Radiobutton(alg_frame, text="KMP",
+                        variable=self.alg_var, value="KMP").pack(side="left", padx=4)
+        ttk.Radiobutton(alg_frame, text="All (compare)",
+                        variable=self.alg_var, value="ALL").pack(side="left", padx=4)
+
+        ttk.Button(alg_frame, text="Search",
+                   command=self.run_search).pack(side="left", padx=12)
+
+        doc_frame = ttk.LabelFrame(self, text="Document View")
+        doc_frame.pack(side="top", fill="both", expand=True, padx=16, pady=(0, 8))
+
+        self.doc_view = themed_text(doc_frame)
+        doc_scroll = ttk.Scrollbar(doc_frame, orient="vertical", command=self.doc_view.yview)
+        self.doc_view.configure(yscrollcommand=doc_scroll.set)
+
+        self.doc_view.pack(side="left", fill="both", expand=True)
+        doc_scroll.pack(side="right", fill="y")
+        self.doc_view.config(state="disabled")
+
+        result_frame = ttk.LabelFrame(self, text="Results")
+        result_frame.pack(side="top", fill="both", expand=True, padx=16, pady=(0, 8))
+
+        self.result_view = themed_text(result_frame)
+        res_scroll = ttk.Scrollbar(result_frame, orient="vertical", command=self.result_view.yview)
+        self.result_view.configure(yscrollcommand=res_scroll.set)
+
+        self.result_view.pack(side="left", fill="both", expand=True)
+        res_scroll.pack(side="right", fill="y")
+
+        self.set_idle_message()
+
+    def set_idle_message(self):
+        self.result_view.config(state="normal")
+        self.result_view.delete("1.0", tk.END)
+        self.result_view.insert(
+            tk.END,
+            "Load a document, enter a pattern, then choose an algorithm and press Search.\n"
         )
-        self.alg_menu.grid(row=2, column=1, padx=6)
+        self.result_view.config(state="disabled")
 
-        ttk.Button(top_frame, text="Search",
-                   command=self.run_search).grid(row=3, column=0, columnspan=2, pady=8)
+    def clear_results(self):
+        self.result_view.config(state="normal")
+        self.result_view.delete("1.0", tk.END)
 
-        self.output = themed_text(self)
-        self.output.pack(fill="both", expand=True, padx=16, pady=12)
-
-    def clear_output(self):
-        self.output.delete("1.0", tk.END)
-
-    def println(self, text):
-        self.output.insert(tk.END, str(text) + "\n")
+    def println_result(self, text):
+        self.result_view.insert(tk.END, str(text) + "\n")
 
     def load_file(self):
         filepath = filedialog.askopenfilename(
@@ -577,37 +858,58 @@ class NotesSearchTab(ttk.Frame):
         except Exception as e:
             messagebox.showerror("Error", str(e))
             return
-        self.file_label.config(text=filepath)
-        self.println(f"Loaded file: {filepath}")
-        self.println(f"Text length: {len(self.text)}")
+
+        self.current_doc_name = os.path.basename(filepath)
+        self.doc_var.set(self.current_doc_name)
+
+        self.doc_view.config(state="normal")
+        self.doc_view.delete("1.0", tk.END)
+        self.doc_view.insert(tk.END, self.text)
+        self.doc_view.config(state="disabled")
+
+        self.set_idle_message()
+
 
     def run_search(self):
-        self.clear_output()
         if not self.text:
-            self.println("No text loaded")
+            messagebox.showinfo("Info", "No document loaded.")
             return
+
         pattern = self.pattern_entry.get()
         if not pattern:
-            self.println("Pattern is empty")
+            messagebox.showinfo("Info", "Pattern is empty.")
             return
-        alg = self.alg_var.get()
 
-        def time_alg(fn, name):
+        alg = self.alg_var.get()
+        self.clear_results()
+        doc_name = self.current_doc_name or "document"
+        self.println_result(
+            f"Comparing algorithms on '{doc_name}' for pattern '{pattern}':\n"
+        )
+
+
+        def time_alg(fn, label):
             start = time.perf_counter()
             matches = fn(self.text, pattern)
-            elapsed = (time.perf_counter() - start) * 1000
-            self.println(f"{name}:")
-            self.println(f"  Matches at indices: {matches}")
-            self.println(f"  Time: {elapsed:.4f} ms")
-            self.println("")
-            return matches, elapsed
+            elapsed = time.perf_counter() - start  
+            self.println_result(f"[{label}]")
+            if matches:
+                self.println_result("Matches at indices: " + ", ".join(map(str, matches)))
+            else:
+                self.println_result("Matches at indices: (none)")
+            self.println_result(f"Time: {elapsed:.6f} s\n")
 
-        if alg in ("NAIVE", "ALL"):
-            time_alg(naive_search, "Naive search")
-        if alg in ("RABIN-KARP", "ALL"):
+        if alg == "NAIVE":
+            time_alg(naive_search, "Naive")
+        elif alg == "RABIN-KARP":
             time_alg(rabin_karp, "Rabin-Karp")
-        if alg in ("KMP", "ALL"):
+        elif alg == "KMP":
             time_alg(kmp_search, "KMP")
+        else:  
+            time_alg(naive_search, "Naive")
+            time_alg(rabin_karp, "Rabin-Karp")
+            time_alg(kmp_search, "KMP")
+        self.result_view.config(state="disabled")
 
 
 class InfoTab(ttk.Frame):
@@ -617,33 +919,50 @@ class InfoTab(ttk.Frame):
         text.pack(fill="both", expand=True, padx=16, pady=12)
 
         content = []
-        content.append("Algorithm Info / Big-O\n")
-        content.append("------------------------\n\n")
+        content.append("Algorithm Info & Complexity (CPSC 335)\n")
+        content.append("-----------------------------------------------\n")
+        content.append("This project focuses on polynomial-time algorithms and practical heuristics that are efficient and useful in real applications.\n\n")
 
-        content.append("Graph algorithms:\n")
-        content.append("  BFS       : O(V + E)\n")
-        content.append("  DFS       : O(V + E)\n")
-        content.append("  Dijkstra  : O((V + E) log V) using heap\n")
-        content.append("  Prim MST  : O(E log V) using heap\n\n")
+        content.append("Graph Algorithms:\n")
+        content.append("  BFS: O(V + E)\n")
+        content.append("  DFS: O(V + E)\n")
+        content.append("  Dijkstra (heap): O((V + E) log V)\n")
+        content.append("  Prim MST (heap): O(E log V)\n\n")
 
-        content.append("Study planner (Knapsack):\n")
-        content.append("  Greedy density sort : O(n log n)\n")
-        content.append("  DP 0/1 knapsack     : O(n * C) where C=capacity\n\n")
+        content.append("Study Planner:\n")
+        content.append("  Greedy schedule (value/time): O(n log n)\n")
+        content.append("  DP 0/1 Knapsack: O(n * C) where C = capacity in time units\n\n")
 
-        content.append("String matching:\n")
-        content.append("  Naive      : O(n * m)\n")
-        content.append("  Rabin-Karp : O(n + m) average, O(n * m) worst (hash collisions)\n")
-        content.append("  KMP        : O(n + m)\n\n")
+        content.append("String Matching:\n")
+        content.append("  1) Naive search:\n")
+        content.append("       - Worst Case: O(n * m)  [pattern occurs everywhere or repeated prefix]\n")
+        content.append("       - Average Case: O((n - m + 1) * m)  [normal random text]\n")
+        content.append("       - Best Case: O(n) [mismatches on 1st char each shift]\n")
 
-        content.append("P vs NP reflection (brief):\n")
-        content.append("  - P   : Problems solvable in polynomial time, e.g., BFS, Dijkstra (with non-negative weights)\n")
-        content.append("  - NP  : Solutions can be verified in polynomial time\n")
-        content.append("  - 0/1 Knapsack is NP-complete in general\n")
-        content.append("  - We used a pseudo-polynomial DP because capacity is treated as a number dimension\n")
-        content.append("  - Open question: is P = NP?  (Still unsolved)\n")
+        content.append("  2) Rabin-Karp:\n")
+        content.append("       - Worst Case: O(n * m)  [many hash collisions]\n")
+        content.append("       - Average Case: O(n + m)  [hash checks mostly unique]\n")
+        content.append("       - Best Case: O(n + m)   [fast hash match + early mismatches]\n")
+
+        content.append("  3) KMP: O(n + m)  in ALL cases  [pattern preprocessing avoids re-checking]\n\n")
+
+        content.append("P vs NP (informal reflection):\n")
+        content.append("   - In this app, we solve following in polynomial time (they are in P):\n")
+        content.append("          - Shortest paths (Dijkstra)\n")
+        content.append("          - Minimum spanning tree (Prim)\n")
+ 
+        content.append("   - If instead we ask for:\n")
+        content.append('          \"the shortest tour that visits every building exactly once and returns to the start,"\n')
+        content.append("           - we get the Traveling Salesman Problem (TSP), which is NP-hard.\n")
+
+        content.append("   - Intuitively:\n")
+        content.append("          - P: problems we can solve in polynomial time.\n")
+        content.append("          - NP: problems where we can verify a given solution in polynomial time.\n")
+        content.append("          - NP-complete: the hardest problems in NP; a polynomial-time solution for one NP-complete problem would imply P = NP.\n")
 
         text.insert(tk.END, "".join(content))
         text.config(state="disabled")
+
 
 
 if __name__ == "__main__":
