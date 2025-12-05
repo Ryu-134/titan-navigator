@@ -7,10 +7,13 @@ How to Run:
 -----------
 1. Install Python 3.10 or newer
 2. Install dependencies:
+`
        pip install PyPDF2 python-docx
+`
 3. Launch the app:
+`
        python final_project.py
-
+`
 
 Dependencies:
 -------------
