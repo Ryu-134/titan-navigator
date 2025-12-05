@@ -5,7 +5,7 @@ A Tkinter-based interactive tool designed for CPSC 335 algorithm demonstration.
 
 Run the program:
 ----------------
-1. Install Python 3.8+
+1. Install Python 3.10+
 
 2. Install dependencies:
    pip install PyPDF2 python-docx
