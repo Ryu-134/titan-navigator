@@ -1,38 +1,54 @@
 Titan Navigator
 ==========================================
-A Tkinter-based interactive tool designed for CPSC 335 algorithm demonstration.
+A Tkinter-based interactive tool demonstrating major algorithms from CPSC 335.
 
 
-Run the program:
-----------------
-1. Install Python 3.10+
-
+How to Run:
+-----------
+1. Install Python 3.10 or newer
 2. Install dependencies:
-   pip install PyPDF2 python-docx
+       pip install PyPDF2 python-docx
+3. Launch the app:
+       python final_project.py
 
-3. Run:
-   python final_project.py
 
 Dependencies:
 -------------
-- Python 3.10+ 
-- Tkinter 
-- PyPDF2        =>  pip install PyPDF2
-- Python-Docx   => pip install python-docx
-
+- Python 3.10+
+- Tkinter (included with standard Python)
+- PyPDF2
+- python-docx
 
 
 Tabs Included:
 --------------
-1. Campus Navigator – BFS, DFS, Dijkstra, Prim MST
-2. Study Planner – Greedy vs DP (0/1 Knapsack)
-3. Notes Search – Naive, Rabin-Karp, KMP string matching
-4. Algorithm Info – Complexity, P vs NP
+1. Campus Navigator
+    - BFS (fewest hops)
+    - DFS (traversal/connectedness)
+    - Dijkstra (shortest weighted path)
+    - Prim MST (minimum spanning tree)
+
+2. Study Planner
+    - Greedy scheduling (value density)
+    - Dynamic Programming (0/1 Knapsack)
+    - Comparison mode
+
+3. Notes Search
+    - Naive search
+    - Rabin-Karp hashing
+    - KMP prefix matching
+    - Performance timing + match locations
+
+4. Algorithm Info
+    - Complexity summary
+    - P vs NP reflection
 
 
-Supported Files (for Notes Search):
-----------------
-.txt, .pdf, .docx
+Supported Document Types:
+-------------------------
+- .txt
+- .pdf
+- .docx
 
 
 Author:
