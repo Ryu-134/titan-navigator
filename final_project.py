@@ -298,7 +298,7 @@ class gui(tk.Tk):
         if platform.system() == "Windows":
             base_font = ("Segoe UI", 12)
         else:
-            base_font = ("SF Pro Text", 12)
+            base_font = ("SF Pro Text", 14)
 
         self.option_add("*TButton.Font", base_font)
         self.option_add("*TLabel.Font", base_font)
@@ -538,7 +538,7 @@ class CampusNavigatorTab(ttk.Frame):
             return
 
         for u, v, w in edges:
-            self.println(f"{u} -- {v} (weight = {w})")
+            self.println(f"    {u} -- {v} (weight = {w})")
 
         self.println("")
         self.println(f"Total MST cost: {total}")
@@ -585,7 +585,7 @@ class StudyPlannerTab(ttk.Frame):
             table_frame,
             columns=("task", "time", "value"),
             show="headings",
-            height=6
+            height=12
         )
         self.tree.heading("task", text="Task")
         self.tree.heading("time", text="Time (h)")
