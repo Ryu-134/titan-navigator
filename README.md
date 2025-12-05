@@ -1,4 +1,4 @@
-Titan Navigator
+Titan Campus Algorithmic Assistant
 ==========================================
 A Tkinter-based interactive tool demonstrating major algorithms from CPSC 335.
 
