@@ -15,7 +15,7 @@ How to Run:
 Dependencies:
 -------------
 - Python 3.10+
-- Tkinter (included with standard Python)
+- Tkinter 
 - PyPDF2
 - python-docx
 
