@@ -736,7 +736,7 @@ class StudyPlannerTab(ttk.Frame):
         self.println(f"Greedy runtime: {g_ms:.4f} ms")
         self.println("")
 
-        self.println("DP optimal schedule (0/1 Knapsack):")
+        self.println("DP Optimal Schedule (0/1 Knapsack):")
         for name, t, v in d_chosen:
             self.println(f"   - {name} (time = {t},  value = {v})")
         self.println(f"DP total time: {d_time}")
@@ -744,7 +744,7 @@ class StudyPlannerTab(ttk.Frame):
         self.println(f"DP runtime: {d_ms:.4f} ms")
         self.println("")
 
-        self.println("\nSummary:")
+        self.println("Summary:")
         if g_value == d_value:
             self.println("  - Greedy and DP achieved the SAME total value.")
         elif g_value < d_value:
