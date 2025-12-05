@@ -690,7 +690,7 @@ class StudyPlannerTab(ttk.Frame):
         chosen, total_time, total_value = greedy_schedule(self.tasks, cap)
         self.println("Greedy schedule:")
         for name, t, v in chosen:
-            self.println(f"  - {name}  (time = {t}, value = {v})")
+            self.println(f"   - {name}  (time = {t}, value = {v})")
         self.println(f"\nTotal time: {total_time}")
         self.println(f"Total value: {total_value}")
         self.output.config(state="disabled")
@@ -704,7 +704,7 @@ class StudyPlannerTab(ttk.Frame):
         chosen, total_time, total_value = dp_schedule(self.tasks, cap)
         self.println("DP optimal schedule (0/1 Knapsack):")
         for name, t, v in chosen:
-            self.println(f"  - {name} (time={t}, value={v})")
+            self.println(f"   - {name} (time = {t},  value = {v})")
         self.println(f"\nTotal time: {total_time}")
         self.println(f"Total value: {total_value}")
         self.output.config(state="disabled")
@@ -730,7 +730,7 @@ class StudyPlannerTab(ttk.Frame):
 
         self.println("Greedy schedule:")
         for name, t, v in g_chosen:
-            self.println(f"  - {name} (time={t}, value={v})")
+            self.println(f"   - {name} (time = {t},  value = {v})")
         self.println(f"Greedy total time: {g_time}")
         self.println(f"Greedy total value: {g_value}")
         self.println(f"Greedy runtime: {g_ms:.4f} ms")
@@ -738,7 +738,7 @@ class StudyPlannerTab(ttk.Frame):
 
         self.println("DP optimal schedule (0/1 Knapsack):")
         for name, t, v in d_chosen:
-            self.println(f"  - {name} (time={t}, value={v})")
+            self.println(f"   - {name} (time = {t},  value = {v})")
         self.println(f"DP total time: {d_time}")
         self.println(f"DP total value: {d_value}")
         self.println(f"DP runtime: {d_ms:.4f} ms")
